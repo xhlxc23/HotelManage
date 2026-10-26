@@ -7,7 +7,7 @@
 
 - account:
 1. id (_The administrator account should be Admin.This is the primary key of this class._)[string <=20]
-2. vipId(_the mark of employees included_)[string]
+2. vipId(_the mark of employees included_)[int]
 3. telephone[string <=13]
 4. password[string <=13]
 5. exp[int]
@@ -15,10 +15,14 @@
 
 - vip:
 (_to classify the rate of the clients_)
-1. id[string]
+1. id[int]
 2. name[string <=10]
 3. icon(_the url of icon_)[string]
-4. discount[float]
+
+- discount:
+1. vipId[int]
+2. categoryId[string]
+3. vipDiscount[float]
 
 - room:
 1. id[string]
@@ -27,7 +31,7 @@
 4. categoryId[string]
 
 
-- category
+- category:
 1. id[string]
 2. name[sting]
 3. basicPrice[int]
