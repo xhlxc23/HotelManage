@@ -1,0 +1,14 @@
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/mydb?useSSL=false&serverTimezone=UTC&characterEncoding=utf8&allowPublicKeyRetrieval=true
+    username: root
+    password: 123456
+
+#服务端口
+server:
+  port: 8080
+
+#日志级别：临时开启 MyBatis SQL 打印
+logging:
+  level:
+    com.example.hotel.mapper: debug
