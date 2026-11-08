@@ -116,6 +116,19 @@
                 />
               </el-form-item>
 
+              <el-form-item label="房型图片">
+                <el-upload
+                  v-model:file-list="pictureList"
+                  list-type="picture-card"
+                  accept="image/*"
+                  multiple
+                  :http-request="handleUploadPicture"
+                  :on-preview="handlePicturePreview"
+                >
+                  <el-icon><Plus /></el-icon>
+                </el-upload>
+              </el-form-item>
+
               <div class="category-actions">
                 <template v-if="selectedCategoryId">
                   <el-button class="ghost-btn" @click="resetCategoryForm">
@@ -459,6 +472,14 @@
           </el-button>
         </el-empty>
       </el-card>
+      <el-dialog
+        v-model="previewVisible"
+        title="图片预览"
+        width="520px"
+        append-to-body
+      >
+        <img :src="previewUrl" class="preview-img" alt="房型图片预览" />
+      </el-dialog>
     </div>
   </el-config-provider>
 </template>
@@ -474,6 +495,7 @@ import {
   Close
 } from '@element-plus/icons-vue'
 import request from '@/api/request'
+import { uploadImage } from '@/api/upload'
 
 //（房间列表数据与加载状态）
 const isLoading = ref(true)
@@ -548,6 +570,11 @@ const categoryForm = reactive({
   description: ''
 })
 
+//（房型图片列表与预览弹窗状态）
+const pictureList = ref([])
+const previewVisible = ref(false)
+const previewUrl = ref('')
+
 //（拉取全部房型数据）
 const fetchCategories = async () => {
   categoryLoading.value = true
@@ -558,6 +585,7 @@ const fetchCategories = async () => {
       name: cat.name,
       basicPrice: cat.basicPrice,
       description: cat.description || '',
+      picture: Array.isArray(cat.picture) ? cat.picture : [],
       discounts: cat.discounts || []
     }))
   } catch (err) {
@@ -573,6 +601,7 @@ const resetCategoryForm = () => {
   categoryForm.vipDiscounts = ['', '', '', '']
   categoryForm.basicPrice = ''
   categoryForm.description = ''
+  pictureList.value = []
 }
 
 const handleSelectCategory = (cat) => {
@@ -581,6 +610,12 @@ const handleSelectCategory = (cat) => {
   categoryForm.name = cat.name || ''
   categoryForm.basicPrice = cat.basicPrice != null ? String(cat.basicPrice) : ''
   categoryForm.description = cat.description || ''
+  pictureList.value = (cat.picture || []).map((url, i) => ({
+    uid: `old-${i}`,
+    name: url.split('/').pop() || `图片${i + 1}`,
+    url,
+    status: 'success'
+  }))
 
   const discounts = ['', '', '', '']
   ;(cat.discounts || []).forEach((item) => {
@@ -608,6 +643,37 @@ const collectDiscounts = () => {
 const validateDiscounts = (list) =>
   list.every((item) => item.vipDiscount > 0 && item.vipDiscount <= 1)
 
+//（上传图片到 MinIO 并回填可访问地址）
+const handleUploadPicture = async ({ file, onSuccess, onError }) => {
+  try {
+    const url = await uploadImage(file)
+    const item = pictureList.value.find((f) => f.uid === file.uid)
+    if (item) item.url = url
+    onSuccess(url)
+  } catch (err) {
+    console.warn('图片上传失败：', err?.message || err)
+    ElMessage.error('图片上传失败，请检查 MinIO 服务是否可用')
+    onError(err)
+  }
+}
+
+const handlePicturePreview = (file) => {
+  previewUrl.value = file.url
+  previewVisible.value = true
+}
+
+//（确认没有图片仍在上传中）
+const picturesReady = () => {
+  if (pictureList.value.some((f) => !f.url)) {
+    ElMessage.warning('图片仍在上传中，请稍候')
+    return false
+  }
+  return true
+}
+
+const currentPictures = () =>
+  pictureList.value.map((f) => f.url).filter(Boolean)
+
 const handleSubmitCategory = async () => {
   const name = categoryForm.name.trim()
   if (!name) {
@@ -632,13 +698,16 @@ const handleSubmitCategory = async () => {
     ElMessage.warning('VIP 折扣需为 0~1 之间的数字（如 0.9）')
     return
   }
+  if (!picturesReady()) return
 
+  const pictures = currentPictures()
   submitLoading.value = true
   try {
     await request.post('/admin/addcategory', {
       name,
       basicPrice: Number(categoryForm.basicPrice),
       discounts,
+      ...(pictures.length ? { picture: pictures } : {}),
       description: categoryForm.description.trim() || undefined
     })
     ElMessage.success(`已添加房型「${name}」`)
@@ -677,6 +746,7 @@ const handleUpdateCategory = async () => {
     ElMessage.warning('VIP 折扣需为 0~1 之间的数字（如 0.9）')
     return
   }
+  if (!picturesReady()) return
 
   const payload = { id: cat.id }
   if (name !== cat.name) payload.name = name
@@ -684,6 +754,10 @@ const handleUpdateCategory = async () => {
   if (discounts.length) payload.discounts = discounts
   const description = categoryForm.description.trim()
   if (description) payload.description = description
+  const pictures = currentPictures()
+  if (pictures.join('|') !== (cat.picture || []).join('|')) {
+    payload.picture = pictures
+  }
 
   submitLoading.value = true
   try {
@@ -1428,6 +1502,24 @@ onMounted(fetchRooms)
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   width: 100%;
+}
+
+:deep(.category-form .el-upload--picture-card),
+:deep(.category-form .el-upload-list--picture-card .el-upload-list__item) {
+  width: 92px;
+  height: 92px;
+  border-radius: 8px;
+}
+
+:deep(.category-form .el-upload--picture-card) {
+  border-color: rgba(6, 26, 43, 0.2);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.preview-img {
+  display: block;
+  width: 100%;
+  border-radius: 8px;
 }
 
 .category-actions {

@@ -17,6 +17,12 @@ export default defineConfig({
         target: 'http://localhost:8080',
         changeOrigin: true,
       },
+      // ⚠️ 新增：MinIO 图片代理，把 /minio 替换成 9000 端口
+      '/minio': {
+        target: 'http://localhost:9000',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/minio/, ''), 
+      },
     },
   },
 })

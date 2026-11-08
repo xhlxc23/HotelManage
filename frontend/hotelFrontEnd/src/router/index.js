@@ -44,6 +44,10 @@ const router = createRouter({
       path: '/room/:id/:startDate?/:endDate?',
       component: () => import('@/components/room.vue')
     },
+    {
+      path:'/vr/:categoryId',
+      component: ()=> import('@/components/vr.vue')
+    },
     //（员工端页面路由）
     {
       path: '/employee',

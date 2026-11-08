@@ -81,6 +81,7 @@
 ## 目录
 
 - [测试接口](#测试接口)
+- [VR 全景接口 `/api/vr`](#vr-全景接口-apivr)
 - [用户端接口 `/api/user`](#用户端接口-apiuser)
   - [用户登录](#1-用户登录)
   - [用户注册](#2-用户注册)
@@ -125,6 +126,112 @@
   "data": "hello world"
 }
 ```
+
+---
+
+## VR 全景接口 `/api/vr`
+
+### GET /api/vr
+
+根据房型 ID 获取该房型的 VR 全景数据，包含所有全景节点和节点间的跳转链接。
+
+- **URL**：`GET /api/vr`
+- **Query 参数**：
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| categoryId | String | ✅ | 房型 ID（如 `C002`） |
+
+**请求示例**：
+
+```
+GET /api/vr?categoryId=C002
+```
+
+**成功响应示例**（已配置 VR）：
+
+```json
+{
+  "code": "200",
+  "msg": "success",
+  "data": {
+    "startNodeId": "p_c002_1",
+    "nodes": [
+      {
+        "id": "p_c002_1",
+        "panorama": "http://localhost:9000/picture/mo/bedroom.jpg",
+        "name": "豪华大床房-主卧",
+        "links": [
+          {
+            "nodeId": "p_c002_2",
+            "label": "去卫浴",
+            "position": {
+              "yaw": "45deg",
+              "pitch": "-20deg"
+            }
+          }
+        ]
+      },
+      {
+        "id": "p_c002_2",
+        "panorama": "http://localhost:9000/picture/mo/bathroom.jpg",
+        "name": "豪华大床房-卫浴",
+        "links": [
+          {
+            "nodeId": "p_c002_1",
+            "label": "回主卧",
+            "position": {
+              "yaw": "-135deg",
+              "pitch": "-20deg"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| startNodeId | String | 起始全景节点 ID，前端进入 VR 时从此节点开始展示 |
+| nodes | List\<VrNode\> | 该房型所有全景节点列表 |
+
+**VrNode 结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | String | 节点 ID |
+| panorama | String | 全景图片 URL |
+| name | String | 节点名称 |
+| links | List\<VrLink\> | 从该节点出发的跳转链接列表 |
+
+**VrLink 结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| nodeId | String | 目标节点 ID |
+| label | String | 链接显示文字（如"去卫浴"） |
+| position | VrPosition | 热点在 3D 空间中的位置 |
+
+**VrPosition 结构**：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| yaw | String | 水平偏转角（如 `"45deg"`，数据库存储为 DECIMAL，返回时自动拼接 `deg`） |
+| pitch | String | 垂直俯仰角（如 `"-20deg"`，数据库存储为 DECIMAL，返回时自动拼接 `deg`） |
+
+**未配置 VR 时的响应**（该房型没有全景数据）：
+
+```json
+{
+  "code": "404",
+  "msg": "该房型尚未配置VR全景",
+  "data": null
+}
+```
+
+> 前端应判断 `code` 是否为 `"200"`，若为 `"404"` 则展示"该房型暂未提供 VR 看房"的提示。
 
 ---
 
@@ -1298,6 +1405,8 @@ GET /api/admin/allOrders?time=2026-11-20T00:00:00
 | orders | Order | 订单 |
 | discount | Discount | VIP 等级 × 房型 折扣配置 |
 | room_occupation | RoomOccupation | 房间占用时间段记录 |
+| panorama_node | PanoramaNode | VR 全景节点 |
+| panorama_link | PanoramaLink | VR 全景节点间跳转链接 |
 
 ### 金额相关字段（已统一为 DECIMAL）
 

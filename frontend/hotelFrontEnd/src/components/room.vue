@@ -18,6 +18,13 @@
             <img :src="img" alt="room-img" class="gallery-img" @error="onImgError" />
           </el-carousel-item>
         </el-carousel>
+        <!-- VR 全景入口按钮 -->
+        <el-button v-if="roomData.categoryId" class="vr-entry-btn" @click="goVr">
+          <el-icon class="vr-entry-icon">
+            <VideoCamera />
+          </el-icon>
+          VR 全景看房
+        </el-button>
       </div>
 
       <div class="main-info-card">
@@ -115,7 +122,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ArrowLeft, House, Calendar } from '@element-plus/icons-vue'
+import { ArrowLeft, House, Calendar, VideoCamera } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { accountId, isManage } from '@/store/auth'
 import request from '@/api/request'
@@ -214,10 +221,14 @@ const fetchRoomDetail = async () => {
     return
   }
 
+  // 管理员查询时，userId 传 000000（与下单逻辑保持一致）
+  const requestUserId = isManage.value ? '000000' : accountId.value
+
   isLoading.value = true
   try {
+    console.log('[room] 请求房间详情，isManage =', isManage.value, '，传入 userId =', requestUserId, '，roomId =', roomId)
     const res = await request.get('/user/oneRoomDetail', {
-      params: { userId: accountId.value, roomId }
+      params: { userId: requestUserId, roomId }
     })
     roomData.value = res.data || null
     if (roomData.value) {
@@ -234,6 +245,15 @@ const fetchRoomDetail = async () => {
 
 const goBack = () => {
   router.back()
+}
+
+// 跳转至 VR 全景页面
+const goVr = () => {
+  if (roomData.value?.categoryId) {
+    router.push(`/vr/${roomData.value.categoryId}`)
+  } else {
+    ElMessage.warning('该房型暂未开通 VR 全景')
+  }
 }
 
 const round2 = (n) => Math.round(Number(n) * 100) / 100
@@ -367,6 +387,43 @@ onMounted(fetchRoomDetail)
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+/* VR 全景入口按钮 */
+.vr-entry-btn {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+  background: rgba(6, 26, 43, 0.75);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 8px 24px rgba(6, 26, 43, 0.35);
+  transition: all 0.3s ease;
+}
+
+.vr-entry-btn:hover {
+  color: #fff;
+  background: rgba(20, 59, 92, 0.9);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(6, 26, 43, 0.45);
+}
+
+.vr-entry-icon {
+  font-size: 18px;
+}
+
+.gallery-wrapper {
+  position: relative;
 }
 
 .main-info-card {
